@@ -1,0 +1,19 @@
+
+<p> <%= params.inspect %> </p>
+
+<p> 
+<% if @faker %> 
+<%= @faker.api %>
+<% end %>
+</p>
+
+<p> 
+<% if @faker_prototypes_default %> 
+
+<%= @faker_prototypes_default.prototype %>
+<br>
+<%= @result_json %>
+<% else %>
+
+<% end %>
+</p>
