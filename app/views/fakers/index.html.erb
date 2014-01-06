@@ -1,19 +1,18 @@
 
-<p> <%= params.inspect %> </p>
-
-<p> 
-<% if @faker %> 
-<%= @faker.api %>
+<ul>
+<% @fakers.each do |faker| %>
+  <li>
+    <%= link_to faker.api, "../#{faker.api}", {:target => "_blank"} %>
+    <%= link_to 'Edit', edit_faker_path(faker) %>
+    <%= link_to 'Delete', faker_path(faker), :method => :delete, data: { confirm: 'Are you sure?' } %>
+  <pre><code>
+  <%= JSON.pretty_generate(JSON.parse(faker.api_prototypes[0].prototype)) %>
+  </code></pre>
+  <%#= link_to 'Show', :controller => 'events', :action => 'show', :id => event %>
+  
+  
+  </li>
 <% end %>
-</p>
+</ul>
 
-<p> 
-<% if @faker_prototypes_default %> 
-
-<%= @faker_prototypes_default.prototype %>
-<br>
-<%= @result_json.to_json %>
-<% else %>
-
-<% end %>
-</p>
+<%= link_to "create new api rule", new_faker_path %>

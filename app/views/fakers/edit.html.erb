@@ -1,0 +1,14 @@
+<%= form_for @faker, :url => faker_path(@faker) do |f| %>
+    <%= f.label :api, "api" %>
+    <%= f.text_field :api %>
+
+    <%= f.fields_for @apiPrototype do |prototype_form| %>
+    <%= prototype_form.hidden_field :id %>
+        <p>
+        <%= prototype_form.label :prototype, "prototype text" %>
+        <%= prototype_form.text_area :prototype %>
+        </p>
+    <% end %>
+
+    <%= f.submit "Update" %>
+<% end %>
