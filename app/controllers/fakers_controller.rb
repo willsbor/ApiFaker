@@ -130,8 +130,8 @@ class FakersController < ApplicationController
       #format.all {render :action => "index.html.erb", :content_type => "text/html"}
       #format.any() { redirect_to(person_list_url) }
             #end
-            #render :json => @result_json
-            render :action => "apply.html.erb"
+            render :json => @result_json
+            #render :action => "apply.html.erb"
 
         else
             # render :action => "apply.html.erb"
