@@ -235,9 +235,9 @@ class FakersController < ApplicationController
         blue = get_value(parsed, "blue", prng.rand(0..3) * 85)
         alpha = get_value(parsed, "alpha", 255)
 
-        base_path = "public/images/fake_images/"
+        base_path = "/images/fake_images"
         filename = Digest::MD5.hexdigest("#{width}_#{height}_#{red}_#{green}_#{blue}_#{alpha}")
-        full_filename = "#{base_path}#{filename}.png"
+        full_filename = "public#{base_path}/#{filename}.png"
         if !File.exist?(full_filename)
             p "create image #{width}x#{height} (#{red}_#{green}_#{blue}_#{alpha})"
             png = ChunkyPNG::Image.new(width, height, ChunkyPNG::Color.rgba(red, green, blue, alpha))  #TRANSPARENT
@@ -245,7 +245,7 @@ class FakersController < ApplicationController
             png.save(full_filename, :interlace => true)
         end
         
-        return "#{request.protocol}#{request.host}:#{request.port}/images/#{filename}.png"
+        return "#{request.protocol}#{request.host}:#{request.port}#{base_path}/#{filename}.png"
     end
 
     def replace_float (parsed)
