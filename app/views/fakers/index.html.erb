@@ -2,7 +2,7 @@
 <ul>
 <% @fakers.each do |faker| %>
   <li>
-    <%= link_to faker.api, "../#{faker.api}", {:target => "_blank"} %>
+    <%= link_to faker.api, "../fakeapi/#{faker.api}", {:target => "_blank"} %>
     <%= link_to 'Edit', edit_faker_path(faker) %>
     <%= link_to 'Delete', faker_path(faker), :method => :delete, data: { confirm: 'Are you sure?' } %>
   <pre><code>

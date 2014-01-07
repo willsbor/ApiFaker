@@ -37,3 +37,6 @@ gem 'jquery-rails'
 # To use debugger
 # gem 'debugger'
 
+gem 'chunky_png'
+#gem 'rmagick'
+

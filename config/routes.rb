@@ -58,6 +58,16 @@ ApiFaker::Application.routes.draw do
   # This is a legacy wild controller route that's not recommended for RESTful applications.
   # Note: This route will make all actions in every controller accessible via GET requests.
   # match ':controller(/:action(/:id))(.:format)' => 'fakers#index'
-  get '*api' => 'fakers#apply'
+  # get ':controller(/:action(/:id))(.:format)' => 'fakers#index'
+  # match '*api' => 'fakers#apply'
+  # match 'api/user2/:id' => 'fakers#apply'
+
+  scope '/fakeapi' do
+    # Directs /admin/products/* to Admin::ProductsController
+    # (app/controllers/admin/products_controller.rb)
+    match '*api' => 'fakers#apply'
+    # match '*api(/:action(/:id))(.:format)' => 'fakers#apply'
+    # match ':api(/:act(/:id))(.:format)', controller: :fakers, action: :apply
+  end
 
 end

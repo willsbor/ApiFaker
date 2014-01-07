@@ -4,6 +4,7 @@ class FakersController < ApplicationController
 
     def index
         @fakers = Faker.all
+
     end
 
     def new
@@ -70,42 +71,73 @@ class FakersController < ApplicationController
         # 查詢對應的 api
         api = params[:api];
         api << ".#{params[:format]}" if params[:format]
+
+        # 截取參數
+        @fake_params = params.except(:controller, :action, :api)
+
         @fakers = Faker.where([ "api = ?", api ])
 
         # 選取第一個
         @faker = @fakers.first
 
-        # prototypes & 拿取第一個 prototype
-        #@faker_prototypes = ApiPrototype.where([ "faker_id = ?", @faker[:id] ])
-        @faker_prototypes = @faker.api_prototypes
-        @faker_prototypes_default = @faker_prototypes.first
+        if !@faker
+            # 找不到就拿全部出來做 ＲＥ
+            @fakers = Faker.all
+            @fakers.each do |faker|
+                sequence_key = Array.new()
+                proto_api = faker.api.gsub(/#.+?#/) do |match|
+                    key = match.gsub(/#(.+)?#/, '\1')
+                    sequence_key << key
+                    "(?<#{key}>.+)"
+                end
+                # p "=====s"
+                # p api
+                # p faker.api
+                # p proto_api
+                # p "=====e"
+                # p sequence_key
 
-        @result_json_string = @faker_prototypes_default.prototype
-        @result_json = JSON.parse(@result_json_string)
+                /^#{proto_api}$/.match(api) {|match|
+                    @faker = faker
+                    # p "match =>"
+                    # p match
+                    # p "<="
+                    sequence_key.each do |key|
+                        @fake_params["##{key}#"] = match[key] 
+                    end
+                    break
+                }
+            end
+        end
 
-        # 改用JSON
-        result_json_replaced = replace_fake_data(@result_json)
-        @result_json = result_json_replaced if result_json_replaced
+        # p @fake_params
 
-        # 取代數字
-        #@result_json = @result_json.gsub(/#integer:.*?#/) do |s|
-        #    param = s[/#integer:(.*?)#/, 1]
-        #    replace_integer(param)
-        #end
+        if @faker
+            # prototypes & 拿取第一個 prototype
+            #@faker_prototypes = ApiPrototype.where([ "faker_id = ?", @faker[:id] ])
+            @faker_prototypes = @faker.api_prototypes
+            @faker_prototypes_default = @faker_prototypes.first
 
-        # 取代string
-        #@result_json = @result_json.gsub(/#string:.*?#/) do |s|
-        #    param = s[/#string:(.*?)#/, 1]
-        #    replace_string(param)
-        #end
+            @result_json_string = @faker_prototypes_default.prototype
+            @result_json = JSON.parse(@result_json_string)
 
-        #respond_to do |format|
-  #format.html {  }
-  #format.all {render :action => "index.html.erb", :content_type => "text/html"}
-  #format.any() { redirect_to(person_list_url) }
-        #end
-        render :json => @result_json
-        #render :action => "apply.html.erb"
+            # 改用JSON
+            result_json_replaced = replace_fake_data(@result_json)
+            @result_json = result_json_replaced if result_json_replaced
+
+            #respond_to do |format|
+      #format.html {  }
+      #format.all {render :action => "index.html.erb", :content_type => "text/html"}
+      #format.any() { redirect_to(person_list_url) }
+            #end
+            #render :json => @result_json
+            render :action => "apply.html.erb"
+
+        else
+            # render :action => "apply.html.erb"
+            # render :status => 404
+            render :file => "#{Rails.root}/public/404", :layout => false, :status => :not_found
+        end
     end
 
     protected
@@ -124,10 +156,16 @@ class FakersController < ApplicationController
                 fake_type = json["#fake_type#"]
                 if fake_type == "integer"
                     nvalue = replace_integer(json)
+                elsif fake_type == "float"
+                    nvalue = replace_float(json)
+                elsif fake_type == "name"
+                    nvalue = replace_name(json)
                 elsif fake_type == "string"
                     nvalue = replace_string(json)
                 elsif fake_type == "array"
                     nvalue = replace_array(json)
+                elsif fake_type == "image"
+                    nvalue = replace_image(json)
                 end
             else
                 json.keys.each do |key|
@@ -140,23 +178,113 @@ class FakersController < ApplicationController
         end
     end
 
+    def replace_object_by_default (parsed)
+        parsed = JSON.parse(parsed) if parsed.kind_of?(String)
+
+        if parsed.has_key?("def_by_query") && @fake_params.has_key?(parsed["def_by_query"])
+            return @fake_params[parsed["def_by_query"]]  
+        end
+
+        nil
+    end
+
+    def get_value (parsed, key, default)
+        parsed = JSON.parse(parsed) if parsed.kind_of?(String)
+
+        parsed.has_key?(key) ? parsed[key] : default
+    end
+
+    def replace_list (parsed, filename)
+        parsed = JSON.parse(parsed) if parsed.kind_of?(String)
+
+        default_input_value = replace_object_by_default(parsed)
+        return default_input_value.to_f if default_input_value
+
+        min = get_value(parsed, "min", 0)
+        max = get_value(parsed, "max", 32767)
+        prng = Random.new
+        len = prng.rand(min..max)
+
+        candidate = Array.new()
+        File.open(filename, "r").each_line do |line|
+            line.gsub!(/\n/, '')
+            if line.length >= min && line.length <= max
+                candidate << line
+            end
+        end
+
+        return candidate.sample if candidate.count > 0
+        return "#system:can't get a item#"
+    end
+
+    def replace_name (parsed)
+        replace_list(parsed, "public/name_candidate_default.txt")
+    end
+
+    def replace_image (parsed)
+        parsed = JSON.parse(parsed) if parsed.kind_of?(String)
+
+        default_input_value = replace_object_by_default(parsed)
+        return default_input_value.to_f if default_input_value
+
+        prng = Random.new
+        width = get_value(parsed, "width", 320)
+        height = get_value(parsed, "height", 320)
+        red = get_value(parsed, "red", prng.rand(0..3) * 85)
+        green = get_value(parsed, "green", prng.rand(0..3) * 85)
+        blue = get_value(parsed, "blue", prng.rand(0..3) * 85)
+        alpha = get_value(parsed, "alpha", 255)
+
+        base_path = "public/images/fake_images"
+        filename = Digest::MD5.hexdigest("#{width}_#{height}_#{red}_#{green}_#{blue}_#{alpha}")
+        full_filename = "#{base_path}#{filename}.png"
+        if !File.exist?(full_filename)
+            p "create image #{width}x#{height} (#{red}_#{green}_#{blue}_#{alpha})"
+            png = ChunkyPNG::Image.new(width, height, ChunkyPNG::Color.rgba(red, green, blue, alpha))  #TRANSPARENT
+            png.circle(width / 2, height / 2, [width / 2, height / 2].min * 0.8)
+            png.save(full_filename, :interlace => true)
+        end
+        
+        return "#{request.protocol}#{request.host}:#{request.port}/images/#{filename}.png"
+    end
+
+    def replace_float (parsed)
+        parsed = JSON.parse(parsed) if parsed.kind_of?(String)
+
+        default_input_value = replace_object_by_default(parsed)
+        return default_input_value.to_f if default_input_value
+
+        min = get_value(parsed, "min", 0)
+        max = get_value(parsed, "max", 32767)
+        prng = Random.new
+        rf = prng.rand(min.to_f..max.to_f).to_f
+
+        if parsed.has_key?("format")
+            rf = "#{parsed["format"] % rf}".to_f
+        end
+        rf
+    end
+
     def replace_integer (parsed)
         parsed = JSON.parse(parsed) if parsed.kind_of?(String)
-        min = 0
-        min = parsed["min"] if parsed.has_key?("min")
-        max = 32767
-        max = parsed["max"] if parsed.has_key?("max")
+
+        default_input_value = replace_object_by_default(parsed)
+        return default_input_value.to_i if default_input_value
+
+        min = get_value(parsed, "min", 0)
+        max = get_value(parsed, "max", 32767)
         prng = Random.new
         prng.rand(min..max)
     end
 
     def replace_string (parsed)
         parsed = JSON.parse(parsed) if parsed.kind_of?(String)
-        min = 0
-        min = parsed["min"] if parsed.has_key?("min")
-        max = 32767
-        max = parsed["max"] if parsed.has_key?("max")
 
+        default_input_value = replace_object_by_default(parsed)
+        return default_input_value.to_i if default_input_value
+
+        min = get_value(parsed, "min", 0)
+        max = get_value(parsed, "max", 32767)
         prng = Random.new
         len = prng.rand(min..max)
         strings = ''
