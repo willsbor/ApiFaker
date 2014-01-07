@@ -235,7 +235,7 @@ class FakersController < ApplicationController
         blue = get_value(parsed, "blue", prng.rand(0..3) * 85)
         alpha = get_value(parsed, "alpha", 255)
 
-        base_path = "public/images/fake_images"
+        base_path = "public/images/fake_images/"
         filename = Digest::MD5.hexdigest("#{width}_#{height}_#{red}_#{green}_#{blue}_#{alpha}")
         full_filename = "#{base_path}#{filename}.png"
         if !File.exist?(full_filename)
